@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>王者玩家画像生成器</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0a0e1a;
+    --ink-2:#10162a;
+    --panel:#161d33;
+    --panel-2:#1d2640;
+    --gold:#e8c477;
+    --gold-bright:#f7e4b0;
+    --gold-deep:#b8923f;
+    --jade:#5fd6b4;
+    --crimson:#e06b6b;
+    --text:#e9e9ef;
+    --text-dim:#9aa3bd;
+    --line:rgba(232,196,119,.18);
+    --serif:"Noto Serif SC",serif;
+    --sans:"Noto Sans SC",sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:var(--sans);
+    color:var(--text);
+    background:
+      radial-gradient(1200px 600px at 50% -10%, rgba(232,196,119,.10), transparent 60%),
+      radial-gradient(900px 500px at 100% 110%, rgba(95,214,180,.08), transparent 55%),
+      linear-gradient(160deg, var(--ink) 0%, var(--ink-2) 100%);
+    background-attachment:fixed;
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    padding:24px 16px 64px;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  }
+  .stage{width:100%;max-width:560px;position:relative;z-index:1}
+
+  /* ---------- Header ---------- */
+  .crest{text-align:center;margin-bottom:18px}
+  .crest .seal{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:54px;height:54px;border-radius:50%;
+    border:1.5px solid var(--gold);
+    background:radial-gradient(circle at 35% 30%, rgba(247,228,176,.25), transparent 70%);
+    font-family:var(--serif);font-weight:900;font-size:26px;color:var(--gold-bright);
+    box-shadow:0 0 24px rgba(232,196,119,.25), inset 0 0 12px rgba(232,196,119,.2);
+    margin-bottom:12px;
+  }
+  .crest h1{
+    font-family:var(--serif);font-weight:900;font-size:26px;letter-spacing:.06em;
+    background:linear-gradient(180deg,var(--gold-bright),var(--gold-deep));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .crest p{color:var(--text-dim);font-size:13px;margin-top:6px;letter-spacing:.04em}
+
+  /* ---------- Card ---------- */
+  .card{
+    background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--line);
+    border-radius:18px;
+    padding:28px 22px 26px;
+    box-shadow:0 24px 60px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04);
+    position:relative;overflow:hidden;
+  }
+  .card::after{
+    content:"";position:absolute;top:0;left:0;right:0;height:2px;
+    background:linear-gradient(90deg,transparent,var(--gold),transparent);
+    opacity:.7;
+  }
+
+  /* ---------- Progress ---------- */
+  .progress-wrap{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+  .bar{flex:1;height:5px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden}
+  .bar > i{display:block;height:100%;width:0;border-radius:99px;
+    background:linear-gradient(90deg,var(--gold-deep),var(--gold-bright));
+    transition:width .45s cubic-bezier(.4,0,.2,1)}
+  .count{font-family:var(--serif);font-size:13px;color:var(--gold);white-space:nowrap}
+
+  /* ---------- Question ---------- */
+  .q-num{font-family:var(--serif);color:var(--gold-deep);font-size:13px;letter-spacing:.2em;margin-bottom:8px}
+  .q-title{font-family:var(--serif);font-weight:700;font-size:20px;line-height:1.5;margin-bottom:20px}
+  .options{display:flex;flex-direction:column;gap:11px}
+  .opt{
+    text-align:left;width:100%;cursor:pointer;
+    background:rgba(255,255,255,.025);
+    border:1px solid rgba(255,255,255,.08);
+    border-radius:12px;padding:14px 16px;
+    color:var(--text);font-size:15px;font-family:var(--sans);line-height:1.45;
+    transition:all .18s ease;display:flex;align-items:center;gap:12px;
+  }
+  .opt .tag{
+    flex-shrink:0;width:26px;height:26px;border-radius:7px;
+    border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--serif);font-size:13px;color:var(--gold);
+    transition:all .18s ease;
+  }
+  .opt:hover{border-color:var(--gold);background:rgba(232,196,119,.07);transform:translateX(2px)}
+  .opt:hover .tag{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+  .opt:active{transform:scale(.99)}
+
+  .anim-in{animation:slideIn .4s cubic-bezier(.2,.7,.3,1) both}
+  @keyframes slideIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+  /* ---------- Intro ---------- */
+  .intro p{color:var(--text-dim);font-size:15px;line-height:1.75;margin-bottom:10px}
+  .intro .meta{display:flex;gap:18px;margin:20px 0 24px;flex-wrap:wrap}
+  .intro .meta div{font-size:13px;color:var(--text-dim)}
+  .intro .meta b{display:block;font-family:var(--serif);color:var(--gold);font-size:20px;font-weight:700}
+  .btn{
+    width:100%;cursor:pointer;border:none;
+    font-family:var(--serif);font-weight:700;font-size:16px;letter-spacing:.08em;
+    padding:15px;border-radius:12px;color:var(--ink);
+    background:linear-gradient(180deg,var(--gold-bright),var(--gold-deep));
+    box-shadow:0 8px 24px rgba(232,196,119,.28);
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .btn:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(232,196,119,.4)}
+  .btn:active{transform:translateY(0)}
+  .btn.ghost{
+    background:transparent;color:var(--gold);
+    border:1px solid var(--line);box-shadow:none;font-size:14px;padding:12px;margin-top:12px;
+  }
+  .btn.ghost:hover{background:rgba(232,196,119,.06);transform:none}
+
+  /* ---------- Result ---------- */
+  .result{text-align:center}
+  .result .label{font-family:var(--serif);color:var(--gold-deep);letter-spacing:.3em;font-size:12px;margin-bottom:10px}
+  .archetype-name{
+    font-family:var(--serif);font-weight:900;font-size:38px;line-height:1.1;margin-bottom:6px;
+    background:linear-gradient(180deg,var(--gold-bright),var(--gold-deep));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .archetype-en{color:var(--text-dim);font-size:13px;letter-spacing:.18em;margin-bottom:18px}
+  .glyph{font-size:48px;margin-bottom:14px;filter:drop-shadow(0 0 18px rgba(232,196,119,.4))}
+  .desc{color:var(--text);font-size:15px;line-height:1.8;text-align:left;
+    background:rgba(0,0,0,.18);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:20px}
+
+  .dims{text-align:left;margin-bottom:22px}
+  .dim{margin-bottom:13px}
+  .dim .row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
+  .dim .row span:first-child{color:var(--text-dim)}
+  .dim .row span:last-child{color:var(--gold);font-family:var(--serif)}
+  .dim .track{height:7px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden}
+  .dim .track > i{display:block;height:100%;border-radius:99px;width:0;
+    background:linear-gradient(90deg,var(--gold-deep),var(--gold-bright));transition:width .9s cubic-bezier(.3,.8,.3,1)}
+
+  .section{text-align:left;margin-bottom:20px}
+  .section h3{font-family:var(--serif);color:var(--gold);font-size:15px;letter-spacing:.08em;
+    margin-bottom:10px;display:flex;align-items:center;gap:8px}
+  .section h3::before{content:"";width:18px;height:1px;background:var(--gold)}
+  .section p{color:var(--text-dim);font-size:14px;line-height:1.75}
+  .section .pill{display:inline-block;font-size:12px;color:var(--gold);
+    border:1px solid var(--line);border-radius:99px;padding:4px 11px;margin:4px 6px 0 0;background:rgba(232,196,119,.05)}
+
+  .ops{background:linear-gradient(180deg,rgba(95,214,180,.06),transparent);
+    border:1px solid rgba(95,214,180,.2);border-radius:12px;padding:16px 18px;text-align:left;margin-bottom:22px}
+  .ops h3{font-family:var(--serif);color:var(--jade);font-size:14px;letter-spacing:.06em;margin-bottom:12px}
+  .ops .item{margin-bottom:12px}
+  .ops .item:last-child{margin-bottom:0}
+  .ops .item b{display:block;color:var(--text);font-size:13px;margin-bottom:3px}
+  .ops .item span{color:var(--text-dim);font-size:13px;line-height:1.6}
+  .ops .risk-hi{color:var(--crimson)}
+  .ops .risk-lo{color:var(--jade)}
+
+  .share-hint{color:var(--text-dim);font-size:12px;text-align:center;margin-top:14px;line-height:1.6}
+
+  footer{text-align:center;color:var(--text-dim);font-size:11px;margin-top:22px;line-height:1.7;opacity:.7}
+  footer a{color:var(--gold-deep);text-decoration:none}
+
+  @media(max-width:420px){
+    .archetype-name{font-size:32px}
+    .q-title{font-size:18px}
+    .card{padding:24px 18px}
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="crest">
+    <div class="seal">王</div>
+    <h1>王者玩家画像生成器</h1>
+    <p>15 题 · 读懂你的召唤师人格</p>
+  </div>
+
+  <div class="card" id="card"></div>
+
+  <footer>
+    基于游戏动机理论（Bartle 玩家分型）设计 · 仅供娱乐与研究<br>
+    本工具与腾讯及《王者荣耀》官方无关
+  </footer>
+</div>
+
+<script>
+/* ===================== 数据 ===================== */
+// 五种玩家原型
+const ARCHETYPES = {
+  conqueror: {
+    name:"征服者", en:"THE CONQUEROR", glyph:"⚔️",
+    desc:"对你来说，王者是一场没有终点的天梯。胜负欲是你的引擎，段位是你的勋章。你享受carry全场、逆风翻盘的高光时刻，也会因为一场不该输的对局辗转难眠。游戏对你而言不是消遣，而是证明实力的舞台。",
+    heroes:["对线压制型法师/射手","高上限刺客","能一打多的战士"],
+    role:"中路 / 打野 / 对抗路 —— 想掌控节奏、决定比赛走向的位置。",
+    ops:{
+      pay:{level:"中—高", txt:"为战力、铭文、强势新英雄付费意愿强；皮肤主要看是否带手感加成或显眼特效。"},
+      risk:{level:"hi", txt:"连败掉分、版本被削、匹配体验差时最容易愤怒流失。胜率是你留存的命脉。"},
+      hook:"赛季冲分目标、巅峰赛排名、限时高强度竞技模式是你的核心激活点。"
+    }
+  },
+  collector:{
+    name:"收藏家", en:"THE COLLECTOR", glyph:"💎",
+    desc:"你的成就感来自「拥有」与「完成度」。英雄全解锁、皮肤集齐、战令满级、成就点拉满——把账号养成一座宝库，是你独有的浪漫。比起一时的输赢，你更在意长期的积累和那份「我都有」的满足。",
+    heroes:["有华丽皮肤的高人气英雄","限定/传说品质皮肤角色","外观出众的法师与射手"],
+    role:"哪个英雄皮肤好看就玩哪个——颜值与收藏价值优先于强度。",
+    ops:{
+      pay:{level:"高", txt:"游戏内付费的核心人群。限定皮肤、返场、战令、抽奖活动转化率最高。"},
+      risk:{level:"lo", txt:"留存稳定，沉没成本高。但若长期无新内容或活动注水，会逐渐冷淡。"},
+      hook:"新皮肤上架、绝版返场、战令季、收集类成就更新是你的强激活点。"
+    }
+  },
+  social:{
+    name:"破晓同行", en:"THE COMPANION", glyph:"🤝",
+    desc:"对你来说，王者是和朋友连线的理由。开黑五排的笑声、语音里的吐槽、那句「再来一把」，才是你真正上线的原因。赢了一起庆祝，输了互相甩锅——重要的从来不是结果，而是有人陪你一起玩。",
+    heroes:["好上手的辅助与坦克","团队向的英雄","能照顾队友的角色"],
+    role:"辅助 / 游走 —— 乐于服务团队，享受配合带来的默契。",
+    ops:{
+      pay:{level:"中", txt:"为「和朋友一起好看」付费——情侣皮、团队皮、表情动作的吸引力大于战力。"},
+      risk:{level:"hi", txt:"留存高度依赖社交关系链。一旦固定队友弃坑，你很可能跟着一起走。"},
+      hook:"双人/多人组队活动、社交分享、战队系统、好友赠送是你的关键激活点。"
+    }
+  },
+  explorer:{
+    name:"博弈者", en:"THE STRATEGIST", glyph:"🧠",
+    desc:"你着迷的是游戏背后的系统。出装思路、铭文搭配、版本理解、英雄机制——你享受研究和验证的过程，喜欢用脑子赢下比赛。一套自创combo打出预期效果时的快感，胜过无脑乱杀十局。",
+    heroes:["机制复杂、上限高的英雄","需要细腻操作的法师/刺客","版本黑马与冷门强势英雄"],
+    role:"中路 / 打野 —— 能最大化发挥理解力与操作深度的位置。",
+    ops:{
+      pay:{level:"中", txt:"理性消费，为「值不值」买单。更愿意为体验和手感付费，对纯外观抽奖谨慎。"},
+      risk:{level:"lo", txt:"对版本变化适应力强，反而把它当乐趣。无聊和缺乏深度才是真正的流失诱因。"},
+      hook:"新英雄机制、版本大改、专业内容（攻略/出装/数据）是你的核心激活点。"
+    }
+  },
+  casual:{
+    name:"逍遥客", en:"THE FREE SPIRIT", glyph:"🌙",
+    desc:"游戏之于你，是一天结束后的解压阀。不冲分、不肝战令、不为输赢烦恼，开心就好。匹配娱乐、人机消遣、随手一局——你来去自由，从不被段位绑架。这份松弛，反而是很多硬核玩家羡慕的状态。",
+    heroes:["简单粗暴、无脑输出的英雄","容错高的坦克与战士","上手即用的人气角色"],
+    role:"随缘补位 —— 哪个位置空了就玩哪个，不强求。",
+    ops:{
+      pay:{level:"低—中", txt:"付费随心情，被低门槛优惠或限时折扣触发，难以预测但偶尔会冲动消费。"},
+      risk:{level:"hi", txt:"忠诚度低、转移成本低，新鲜感一过就可能去玩别的游戏，是最难留住的人群。"},
+      hook:"轻量化娱乐模式、登录奖励、低门槛活动、节日彩蛋是你的主要激活点。"
+    }
+  }
+};
+
+// 计分维度 = 五原型
+const KEYS = ["conqueror","collector","social","explorer","casual"];
+
+// 15 道题，每个选项给对应原型加分
+const QUESTIONS = [
+  { q:"你打开王者，最主要的原因是？",
+    opts:[
+      {t:"想赢、想上分，证明自己",s:{conqueror:3}},
+      {t:"研究新英雄和新版本怎么玩",s:{explorer:3}},
+      {t:"朋友喊我开黑",s:{social:3}},
+      {t:"单纯放松解压，打发时间",s:{casual:3}},
+    ]},
+  { q:"上线后你通常第一件事是？",
+    opts:[
+      {t:"直接进排位，开始冲分",s:{conqueror:3}},
+      {t:"看看有没有新皮肤、新活动",s:{collector:3}},
+      {t:"看看哪些好友在线",s:{social:3}},
+      {t:"先打一局匹配/人机热热手",s:{casual:3}},
+    ]},
+  { q:"新赛季开启，你的第一反应是？",
+    opts:[
+      {t:"重新定位，目标比上赛季更高",s:{conqueror:3}},
+      {t:"研究改动了哪些英雄、版本怎么变",s:{explorer:3}},
+      {t:"赶紧领赛季奖励和新皮肤",s:{collector:3}},
+      {t:"没什么特别感觉，照常玩",s:{casual:2,social:1}},
+    ]},
+  { q:"出了一款新皮肤，你会？",
+    opts:[
+      {t:"只要好看/限定，必入",s:{collector:3}},
+      {t:"看有没有手感加成，影响战力才买",s:{conqueror:2,explorer:1}},
+      {t:"看朋友买不买，一起买好玩",s:{social:3}},
+      {t:"基本不买，能玩就行",s:{casual:3}},
+    ]},
+  { q:"排位连跪三把，你会？",
+    opts:[
+      {t:"复盘问题，调整状态继续打",s:{conqueror:2,explorer:1}},
+      {t:"研究是不是该换英雄/出装了",s:{explorer:3}},
+      {t:"喊朋友来组队，带带我",s:{social:3}},
+      {t:"先下了，明天再说",s:{casual:3}},
+    ]},
+  { q:"你更喜欢什么样的英雄？",
+    opts:[
+      {t:"操作上限高、能carry的",s:{conqueror:2,explorer:1}},
+      {t:"皮肤多、外观帅气的",s:{collector:3}},
+      {t:"能照顾队友、团队向的",s:{social:3}},
+      {t:"简单好上手、不用太费脑的",s:{casual:3}},
+    ]},
+  { q:"开黑时你通常是？",
+    opts:[
+      {t:"指挥全队、安排节奏的那个",s:{conqueror:2,explorer:1}},
+      {t:"专心研究配合和阵容的那个",s:{explorer:3}},
+      {t:"负责活跃气氛、聊天吐槽的那个",s:{social:3}},
+      {t:"跟着走、轻松玩就好的那个",s:{casual:3}},
+    ]},
+  { q:"对于版本强势英雄和最优出装，你？",
+    opts:[
+      {t:"必须跟上版本，强势的就练",s:{conqueror:2,explorer:1}},
+      {t:"喜欢自己钻研、找冷门解法",s:{explorer:3}},
+      {t:"问朋友/看推荐，跟着用",s:{social:2,casual:1}},
+      {t:"不太关注，凭感觉出",s:{casual:3}},
+    ]},
+  { q:"一局里最有成就感的瞬间是？",
+    opts:[
+      {t:"1v3反杀、关键团carry全场",s:{conqueror:3}},
+      {t:"用自创思路打出预期效果",s:{explorer:3}},
+      {t:"一波完美配合，和队友击掌",s:{social:3}},
+      {t:"轻松赢下，全程很开心",s:{casual:3}},
+    ]},
+  { q:"你的段位目标是？",
+    opts:[
+      {t:"越高越好，最好上荣耀/巅峰",s:{conqueror:3}},
+      {t:"到能解锁奖励/皮肤的段位就行",s:{collector:3}},
+      {t:"和朋友差不多，能一起打就行",s:{social:3}},
+      {t:"无所谓段位，开心最重要",s:{casual:3}},
+    ]},
+  { q:"周末一般会玩多久？",
+    opts:[
+      {t:"很久，能连肝好几个小时冲分",s:{conqueror:2,collector:1}},
+      {t:"看活动和内容，有的玩就多玩",s:{collector:2,explorer:1}},
+      {t:"看朋友在不在线，约着玩",s:{social:3}},
+      {t:"随便玩玩，几把就够了",s:{casual:3}},
+    ]},
+  { q:"队友「演了」，你会？",
+    opts:[
+      {t:"想办法自己carry，少抱怨",s:{conqueror:3}},
+      {t:"分析问题出在哪，下局改进",s:{explorer:3}},
+      {t:"无所谓，朋友局图个乐",s:{social:2,casual:1}},
+      {t:"算了，下一把就好了",s:{casual:3}},
+    ]},
+  { q:"你会看 KPL 职业比赛吗？",
+    opts:[
+      {t:"会，学习高手的操作和决策",s:{conqueror:1,explorer:2}},
+      {t:"会，研究战术和版本理解",s:{explorer:3}},
+      {t:"偶尔，和朋友一起看热闹",s:{social:3}},
+      {t:"基本不看",s:{casual:3}},
+    ]},
+  { q:"如果游戏只能保留一个功能，你选？",
+    opts:[
+      {t:"排位赛系统",s:{conqueror:3}},
+      {t:"皮肤/收藏系统",s:{collector:3}},
+      {t:"组队开黑功能",s:{social:3}},
+      {t:"娱乐/匹配模式",s:{casual:3}},
+    ]},
+  { q:"朋友问你为什么还在玩王者，你会说？",
+    opts:[
+      {t:"还没爬到我想要的段位",s:{conqueror:3}},
+      {t:"皮肤都买了，不玩亏了",s:{collector:3}},
+      {t:"朋友都在玩啊",s:{social:3}},
+      {t:"就是闲着解压，挺方便的",s:{casual:3}},
+    ]},
+];
+
+/* ===================== 数据收集配置 ===================== */
+// ↓↓↓ 把你部署 Google Apps Script 后拿到的网址，粘贴到下面引号的中间 ↓↓↓
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbyahDPh03QCRbSbTDLmUx4WvAk4WZlyEJsUrewZ_Uzzadq-7bVioiq2H3O8bsW7h9fi/exec";
+// 留空时，测试照常进行，只是不会上传数据。填入网址后即开始自动收集。
+
+/* ===================== 逻辑 ===================== */
+const card = document.getElementById('card');
+let step = -1; // -1 = intro
+let scores = {conqueror:0,collector:0,social:0,explorer:0,casual:0};
+let answers = [];   // 记录每题选的 A/B/C/D
+
+function renderIntro(){
+  step = -1;
+  scores = {conqueror:0,collector:0,social:0,explorer:0,casual:0};
+  answers = [];
+  card.className = "card";
+  card.innerHTML = `
+    <div class="intro anim-in">
+      <p>每个召唤师上分的理由都不一样。有人为了赢，有人为了收集，有人只是为了和朋友连线。</p>
+      <p>回答 15 个关于你游戏习惯的问题，我们会用游戏动机理论分析出你属于哪一种玩家原型，并给出专属解读。</p>
+      <div class="meta">
+        <div><b>15</b>道题目</div>
+        <div><b>≈2</b>分钟</div>
+        <div><b>5</b>种原型</div>
+      </div>
+      <button class="btn" id="start">开始测试</button>
+    </div>`;
+  document.getElementById('start').onclick = ()=>{step=0;renderQuestion();};
+}
+
+function renderQuestion(){
+  const Q = QUESTIONS[step];
+  const pct = Math.round((step/QUESTIONS.length)*100);
+  card.className = "card";
+  card.innerHTML = `
+    <div class="progress-wrap">
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <div class="count">${step+1} / ${QUESTIONS.length}</div>
+    </div>
+    <div class="anim-in" key="${step}">
+      <div class="q-num">第 ${String(step+1).padStart(2,'0')} 题</div>
+      <div class="q-title">${Q.q}</div>
+      <div class="options">
+        ${Q.opts.map((o,i)=>`
+          <button class="opt" data-i="${i}">
+            <span class="tag">${"ABCD"[i]}</span>
+            <span>${o.t}</span>
+          </button>`).join('')}
+      </div>
+    </div>`;
+  card.querySelectorAll('.opt').forEach(btn=>{
+    btn.onclick = ()=>{
+      const i = +btn.dataset.i;
+      const o = Q.opts[i];
+      answers[step] = "ABCD"[i];
+      for(const k in o.s) scores[k]+=o.s[k];
+      step++;
+      if(step<QUESTIONS.length) renderQuestion();
+      else renderResult();
+    };
+  });
+}
+
+function renderResult(){
+  // 排序
+  const ranked = KEYS.map(k=>({k,v:scores[k]})).sort((a,b)=>b.v-a.v);
+  const top = ranked[0].k;
+  const second = ranked[1].k;
+  const A = ARCHETYPES[top];
+  const max = Math.max(...KEYS.map(k=>scores[k]),1);
+
+  sendData(top, second);   // 静默上传，失败也不影响用户体验
+
+  card.className = "card";
+  card.innerHTML = `
+    <div class="result anim-in">
+      <div class="label">你的玩家原型</div>
+      <div class="glyph">${A.glyph}</div>
+      <div class="archetype-name">${A.name}</div>
+      <div class="archetype-en">${A.en}</div>
+      <div class="desc">${A.desc}</div>
+
+      <div class="dims">
+        ${ranked.map(r=>`
+          <div class="dim">
+            <div class="row"><span>${ARCHETYPES[r.k].name}</span><span>${Math.round(r.v/max*100)}%</span></div>
+            <div class="track"><i data-w="${Math.round(r.v/max*100)}"></i></div>
+          </div>`).join('')}
+      </div>
+
+      <div class="section">
+        <h3>英雄偏好画像</h3>
+        <p>你大概率被这些英雄吸引：</p>
+        <div>${A.heroes.map(h=>`<span class="pill">${h}</span>`).join('')}</div>
+        <p style="margin-top:12px">分路倾向：${A.role}</p>
+      </div>
+
+      <div class="section">
+        <h3>你的隐藏一面</h3>
+        <p>除了「${A.name}」，你身上也带着「${ARCHETYPES[second].name}」的特质——${secondHint(second)}</p>
+      </div>
+
+      <div class="ops">
+        <h3>📊 运营视角解读（用户研究 Demo）</h3>
+        <div class="item"><b>付费倾向</b><span>${A.ops.pay.level} —— ${A.ops.pay.txt}</span></div>
+        <div class="item"><b>流失风险 <span class="${A.ops.risk.level==='hi'?'risk-hi':'risk-lo'}">${A.ops.risk.level==='hi'?'偏高':'偏低'}</span></b><span>${A.ops.risk.txt}</span></div>
+        <div class="item"><b>激活节点</b><span>${A.ops.hook}</span></div>
+      </div>
+
+      <button class="btn" id="restart">重新测试</button>
+      <button class="btn ghost" id="share">截图保存 / 分享给好友</button>
+      <p class="share-hint">长按或截图本页保存你的画像卡片，<br>分享给一起开黑的朋友看看你们是不是同一类人。</p>
+    </div>`;
+
+  // 进度条动画
+  requestAnimationFrame(()=>{
+    card.querySelectorAll('.track > i').forEach(i=>{ i.style.width = i.dataset.w + "%"; });
+  });
+  document.getElementById('restart').onclick = renderIntro;
+  document.getElementById('share').onclick = ()=>{
+    const url = location.href.split('#')[0];
+    if(navigator.share){
+      navigator.share({title:`我是「${A.name}」型王者玩家`,text:`我刚测出我的王者玩家原型是「${A.name}」，你来试试？`,url}).catch(()=>{});
+    } else {
+      navigator.clipboard?.writeText(url);
+      alert("链接已复制，也可以直接截图本页分享～");
+    }
+  };
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function secondHint(k){
+  const m = {
+    conqueror:"在意输赢，关键时刻不服输。",
+    collector:"对完成度和拥有感有执念。",
+    social:"重视和朋友一起玩的体验。",
+    explorer:"喜欢琢磨机制和最优解。",
+    casual:"骨子里也想轻松随性地玩。"
+  };
+  return m[k];
+}
+
+/* 静默上传一条答题记录到 Google 表格。失败时静默忽略，绝不打断用户。 */
+let _sent = false;
+function sendData(topKey, secondKey){
+  if(!ENDPOINT || _sent) return;   // 未配置网址 / 已发过 → 跳过
+  _sent = true;
+  const payload = {
+    ts: new Date().toISOString(),
+    archetype: ARCHETYPES[topKey].name,
+    archetypeKey: topKey,
+    second: ARCHETYPES[secondKey].name,
+    scores: scores,
+    answers: answers.slice(0, QUESTIONS.length)
+  };
+  try{
+    fetch(ENDPOINT, {
+      method: "POST",
+      mode: "no-cors",                       // 规避跨域预检，Apps Script 仍能收到
+      headers: {"Content-Type": "text/plain;charset=utf-8"},
+      body: JSON.stringify(payload)
+    }).catch(()=>{});
+  }catch(e){/* 忽略 */}
+}
+
+renderIntro();
+</script>
+</body>
+</html>
